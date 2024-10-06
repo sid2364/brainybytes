@@ -49,15 +49,19 @@ CommentContent       = ( [^*] | \*+ [^/*] )*
 Identifier = [:jletter:] [:jletterdigit:]*
 DecIntegerLiteral = 0 | [1-9][0-9]*
 
+Compiler = "compiler"
+MatchA = "a"
+MatchB = "b"
+MatchC = "c"
+
 %state STRING
 //////////
 //States//
 //////////
 
-%state YYINITIAL,PRINT
+%state YYINITIAL
 
 %%//Identification of tokens and actions
-
 <YYINITIAL>{
     {LineTerminator} {
         System.out.println(); // Print the newline when we encounter it
@@ -65,12 +69,17 @@ DecIntegerLiteral = 0 | [1-9][0-9]*
 
     {InputCharacter}+ {
         // Print the current line number and the text of the line
-        System.out.print((yyline + 1) + ": " + yytext());
+        // System.out.print((yyline + 1) + ": " + yytext());
+        String line = yytext();
+        if (line.startsWith("a")) {
+            line = line.replace("compiler", "nope");
+        } else if (line.startsWith("b")) {
+            line = line.replace("compiler", "???");
+        } else if (line.startsWith("c")) {
+            line = line.replace("compiler", "!!!");
+        } else {
+            System.out.println();
+        }
+        System.out.print((yyline + 1) + ": " + line);
     }
-}
-
-<PRINT>{
-	//{EndOfLine} {yybegin(YYINITIAL);}
-	{InputCharacter} {System.out.println(yytext());}
-	//.           {System.out.println(yytext());} //we print them explicitly
 }

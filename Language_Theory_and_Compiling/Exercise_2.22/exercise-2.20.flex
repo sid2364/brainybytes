@@ -54,23 +54,13 @@ DecIntegerLiteral = 0 | [1-9][0-9]*
 //States//
 //////////
 
-%state YYINITIAL,PRINT
+%state YYINITIAL
 
 %%//Identification of tokens and actions
 
 <YYINITIAL>{
-    {LineTerminator} {
-        System.out.println(); // Print the newline when we encounter it
-    }
-
-    {InputCharacter}+ {
-        // Print the current line number and the text of the line
-        System.out.print((yyline + 1) + ": " + yytext());
-    }
-}
-
-<PRINT>{
-	//{EndOfLine} {yybegin(YYINITIAL);}
-	{InputCharacter} {System.out.println(yytext());}
-	//.           {System.out.println(yytext());} //we print them explicitly
+//We just want to print the comments, nothing else
+    {Comment} {System.out.println("Comment: " + yytext());}
+    . {}
+    {WhiteSpace} {}
 }

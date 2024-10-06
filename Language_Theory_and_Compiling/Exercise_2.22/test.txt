@@ -4,3 +4,9 @@ this is a word0 word2
 word4 word6
 
 -0.4E-1
+
+//this is a commen
+a compiler is great
+b compiler is not
+c compiler def isn't
+a something compiler is something

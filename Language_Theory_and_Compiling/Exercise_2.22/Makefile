@@ -1,6 +1,6 @@
 all:
-	jflex exercise-2.19.flex
-	javac LexicalUnit.java
+	jflex exercise-2.21.flex
+	javac SampleLexer.java
 test:
 	java SampleLexer test.txt
 
