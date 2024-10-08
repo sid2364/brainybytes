@@ -1,0 +1,15 @@
+!! Euclid's algorithm !!
+
+LET Euclidean_algorithm BE
+  IN(a):
+  IN(b):
+  WHILE {0 < b} REPEAT
+      c = b:
+      WHILE {b <= a} REPEAT     $ Computation of modulo
+        a = a-b:
+      END:
+      b = a:
+      a = c:
+  END:
+  OUT(a):
+END
