@@ -1,5 +1,7 @@
+from sched import scheduler
+
 from entities import TaskSet, Task, Job
-from rate_monotonic import rate_monotonic_schedule
+from algorithms import RateMonotonic, DeadlineMonotonic, EarliestDeadlineFirst, RoundRobin
 
 import csv
 import argparse
@@ -25,7 +27,9 @@ def test_rate_monotonic_schedule():
     task4 = Task(0, 5, 20, 20)
 
     task_set = TaskSet([task1, task2, task3, task4])
-    rate_monotonic_schedule(task_set, 24)
+    rm_scheduler = RateMonotonic(task_set)
+    ret_val = rm_scheduler.is_schedulable()
+    print(ret_val)
 
 def parse_task_file(file_path):
     tasks = []
@@ -63,14 +67,21 @@ def main():
 
     task_set = parse_task_file(task_set_file)
 
+
     if algorithm == 'rm':
-        rate_monotonic_schedule(task_set, 24)
+        task_scheduler = RateMonotonic(task_set)
     elif algorithm == 'dm' or algorithm == 'audsley':
-        print("DM/Audsley scheduling")
+        task_scheduler = DeadlineMonotonic(task_set)
     elif algorithm == 'edf':
-        print("EDF scheduling")
+        task_scheduler = EarliestDeadlineFirst(task_set)
     elif algorithm == 'rr':
-        print("Round Robin scheduling")
+        task_scheduler = RoundRobin(task_set)
+    else:
+        print("Invalid algorithm selected.") # Won't happen because of argparse but why not
+        return
+
+    ret_val = task_scheduler.is_schedulable()
+    print(ret_val)
 
 if __name__ == "__main__":
     #test_release_job()
