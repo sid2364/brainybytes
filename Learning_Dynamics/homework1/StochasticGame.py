@@ -33,8 +33,6 @@ class StochasticGame(ParallelEnv):  # also use from pettingzoo
         action_1 = actions[self.agents[1]]
         action_2 = actions[self.agents[2]]
 
-        print("actions", action_0, action_1, action_2)
-
         # Get rewards from the reward matrix
         #print("actions", action_0, action_1, action_2)
         rewards_0, rewards_1, rewards_2 = self.get_rewards_for_actions(action_0, action_1, action_2)

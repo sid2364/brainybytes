@@ -406,6 +406,23 @@ from StochasticGame import StochasticGame, StandardDeviation
 
 STOCHASTIC_GAME_REWARDS = np.array([
     # Player 1: a1
+    [[11, 30, 0],  # Player 2: b1, for Player 3: c1, c2, c3
+     [30, 7, 6],  # Player 2: b2, for Player 3: c1, c2, c3
+     [0, 0, 5]],  # Player 2: b3, for Player 3: c1, c2, c3
+
+    # Player 1: a2
+    [[11, 3, 0],  # Player 2: b1, for Player 3: c1, c2, c3
+     [-3, 7, 6],  # Player 2: b2, for Player 3: c1, c2, c3
+     [0, 0, 5]],  # Player 2: b3, for Player 3: c1, c2, c3
+
+    # Player 1: a3
+    [[14, -50, 0],  # Player 2: b1, for Player 3: c1, c2, c3
+     [-50, 4, 3],  # Player 2: b2, for Player 3: c1, c2, c3
+     [0, 0, 3]]  # Player 2: b3, for Player 3: c1, c2, c3
+])
+
+STOCHASTIC_GAME_REWARDS_OLD = np.array([
+    # Player 1: a1
     [[11, -30, 0],     # Player 2: b1, for Player 3: c1, c2, c3
      [-30, 7, 6],      # Player 2: b2, for Player 3: c1, c2, c3
      [0, 0, 5]],         # Player 2: b3, for Player 3: c1, c2, c3
@@ -413,10 +430,10 @@ STOCHASTIC_GAME_REWARDS = np.array([
     # Player 1: a2
     [[11, -3, 0],      # Player 2: b1, for Player 3: c1, c2, c3
      [-3, 7, 6],       # Player 2: b2, for Player 3: c1, c2, c3
-     [0, 0, 3]],         # Player 2: b3, for Player 3: c1, c2, c3
+     [0, 0, 5]],         # Player 2: b3, for Player 3: c1, c2, c3
 
     # Player 1: a3
-    [[14, 0, 0],       # Player 2: b1, for Player 3: c1, c2, c3
+    [[14, -50, 0],       # Player 2: b1, for Player 3: c1, c2, c3
      [-50, 4, 3],      # Player 2: b2, for Player 3: c1, c2, c3
      [0, 0, 3]]          # Player 2: b3, for Player 3: c1, c2, c3
 ])
@@ -437,12 +454,14 @@ and you often have to maintain beliefs about the other agents’ strategies.
 from JointActionLearner import BoltzmannJointActionLearner
 
 # Number of trial runs
-num_trials = 10
+num_trials = 100
 num_episodes = 1000
 # Store the probability of optimal joint action for each episode, averaged across trials
 optimal_action_probs_boltzmann = np.zeros(num_episodes)
 
-optimal_joint_actions = [(2, 0, 0)] # I think!
+optimal_joint_actions = [(2, 1, 0), (2, 0, 1)] # I think!
+
+rewards_so_far = []
 
 # Run trial runs for Boltzmann Joint Action Learner
 for trial in range(num_trials):
@@ -463,7 +482,8 @@ for trial in range(num_trials):
         epsilon_decay=0.99,
         temperature=1.0,
         temperature_min=0.1,
-        temperature_decay=0.99
+        temperature_decay=0.995,
+        agent_name="Agent 0"
     )
 
     agent_1_boltzmann = BoltzmannJointActionLearner(
@@ -477,7 +497,8 @@ for trial in range(num_trials):
         epsilon_decay=0.99,
         temperature=1.0,
         temperature_min=0.1,
-        temperature_decay=0.99
+        temperature_decay=0.995,
+        agent_name="Agent 1"
     )
 
     agent_2_boltzmann = BoltzmannJointActionLearner(
@@ -491,65 +512,73 @@ for trial in range(num_trials):
         epsilon_decay=0.99,
         temperature=1.0,
         temperature_min=0.1,
-        temperature_decay=0.99
+        temperature_decay=0.995,
+        agent_name="Agent 2"
     )
 
     # Keep track of the number of optimal actions for each episode
     optimal_actions_boltzmann = np.zeros(num_episodes)
 
     for episode in range(num_episodes):
-
         observations = env.reset()
         state = 0
-
         done = False
 
-        # Agents take actions
-        action_0_boltzmann = agent_0_boltzmann.select_action(state)
-        action_1_boltzmann = agent_1_boltzmann.select_action(state)
-        action_2_boltzmann = agent_2_boltzmann.select_action(state)
+        while not done:
+            # Agents take actions
+            action_0_boltzmann = agent_0_boltzmann.select_action(state)
+            action_1_boltzmann = agent_1_boltzmann.select_action(state)
+            action_2_boltzmann = agent_2_boltzmann.select_action(state)
 
-        actions = {"player_0": action_0_boltzmann, "player_1": action_1_boltzmann, "player_2": action_2_boltzmann}
+            actions = {"player_0": action_0_boltzmann, "player_1": action_1_boltzmann, "player_2": action_2_boltzmann}
 
-        # Step in the environment
-        observations, rewards, dones, _, infos = env.step(actions)
+            # Step in the environment
+            observations, rewards, dones, _, infos = env.step(actions)
 
-        # Check if the agents selected the optimal joint action
-        #print("actions", action_0_boltzmann, action_1_boltzmann, action_2_boltzmann)
-        if (action_0_boltzmann, action_1_boltzmann, action_2_boltzmann) in optimal_joint_actions:
-            optimal_actions_boltzmann[episode] += 1
+            # Update the Q-tables
+            agent_0_boltzmann.update(state, action_0_boltzmann, action_1_boltzmann, action_2_boltzmann, state,
+                                     rewards["player_0"], dones["player_0"], update_epsilon=True)
+            agent_1_boltzmann.update(state, action_1_boltzmann, action_0_boltzmann, action_2_boltzmann, state,
+                                     rewards["player_1"], dones["player_1"], update_epsilon=True)
+            agent_2_boltzmann.update(state, action_2_boltzmann, action_0_boltzmann, action_1_boltzmann, state,
+                                     rewards["player_2"], dones["player_2"], update_epsilon=True)
 
-        # Update the Q-tables
-        agent_0_boltzmann.update(state, action_0_boltzmann, action_1_boltzmann, action_2_boltzmann, state, rewards["player_0"], dones["player_0"])
-        agent_1_boltzmann.update(state, action_1_boltzmann, action_0_boltzmann, action_2_boltzmann, state, rewards["player_1"], dones["player_1"])
-        agent_2_boltzmann.update(state, action_2_boltzmann, action_0_boltzmann, action_1_boltzmann, state, rewards["player_2"], dones["player_2"])
-        """
-        
-        # Update the Q-tables
-        agent_0_jal.update(state, action_0_jal, action_1_jal, state, rewards["player_0"], dones["player_0"])
-        agent_1_jal.update(state, action_1_jal, action_0_jal, state, rewards["player_1"], dones["player_1"])
-        """
+            # Update opponent distributions
+            agent_0_boltzmann.update_opponent_distribution(action_1_boltzmann, action_2_boltzmann)
+            agent_1_boltzmann.update_opponent_distribution(action_0_boltzmann, action_2_boltzmann)
+            agent_2_boltzmann.update_opponent_distribution(action_0_boltzmann, action_1_boltzmann)
 
-        # Update belief about the opponent's strategy
-        agent_0_boltzmann.update_opponent_distribution(action_1_boltzmann, action_2_boltzmann)
-        agent_1_boltzmann.update_opponent_distribution(action_0_boltzmann, action_2_boltzmann)
-        agent_2_boltzmann.update_opponent_distribution(action_0_boltzmann, action_1_boltzmann)
+            # Check if the agents selected the optimal joint action
+            if (action_0_boltzmann, action_1_boltzmann, action_2_boltzmann) in optimal_joint_actions:
+                optimal_actions_boltzmann[episode] += 1
 
-        # Update temperature
-        agent_0_boltzmann.update_temperature()
-        agent_1_boltzmann.update_temperature()
-        agent_2_boltzmann.update_temperature()
+            # Update temperature after each interaction if desired
+            # Alternatively, update after each episode
 
-        agent_1_boltzmann.print_rewards(episode)
+            # Move to the next state if applicable
+            state = observations  # Update if your environment provides the next state
+
+            # Check if the episode is done
+            done = dones["player_0"] and dones["player_1"] and dones["player_2"]
+
+            # Update temperature after each episode
+            agent_0_boltzmann.update_temperature()
+            agent_1_boltzmann.update_temperature()
+            agent_2_boltzmann.update_temperature()
+
+            if trial==num_trials-1 and episode==num_episodes-1:
+                agent_0_boltzmann.print_rewards(episode)
+                agent_1_boltzmann.print_rewards(episode)
+                agent_2_boltzmann.print_rewards(episode)
+
+            # keep track of actions chosen by the agents and plot them\
+            rewards_this_cycle = (action_0_boltzmann, action_1_boltzmann, action_2_boltzmann)
+            rewards_so_far.append(rewards_this_cycle)
+
 
     # Calculate the probability of optimal joint action over episodes for this trial
     optimal_action_probs_boltzmann += optimal_actions_boltzmann / num_trials  # Averaging across trials
-    #print("optimal_actions_boltzmann/num_trials", optimal_actions_boltzmann / num_trials )
 
-    #print q values
-    #print("agent_0_boltzmann.qtable", agent_0_boltzmann.qtable)
-    #print("agent_1_boltzmann.qtable", agent_1_boltzmann.qtable)
-    #print("agent_2_boltzmann.qtable", agent_2_boltzmann.qtable)
 
 # Plot the results with JAL for 3 agents
 plt.plot(optimal_action_probs_boltzmann, label='Boltzmann Joint Action Learners')
@@ -558,4 +587,33 @@ plt.ylabel('Probability of Choosing an Optimal Joint Action')
 plt.title('Choosing Optimal Joint Actions')
 plt.legend()
 plt.grid(True)
+plt.show()
+
+
+from collections import Counter
+
+action_counts = Counter(rewards_so_far)
+
+# Extract action tuples and their frequencies
+actions = list(action_counts.keys())
+frequencies = list(action_counts.values())
+
+# Create a bar chart
+plt.figure(figsize=(10, 6))
+
+# Convert tuple actions to string for labeling
+action_labels = [str(action) for action in actions]
+
+plt.bar(action_labels, frequencies)
+
+# Add labels and title
+plt.xlabel('Actions (Agent 0, Agent 1, Agent 2)')
+plt.ylabel('Frequency')
+plt.title('Frequency of Joint Actions Taken by 3 Agents')
+
+# Rotate x-axis labels for better readability
+plt.xticks(rotation=45, ha='right')
+
+# Show the plot
+plt.tight_layout()
 plt.show()
