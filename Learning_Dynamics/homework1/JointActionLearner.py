@@ -169,8 +169,11 @@ class BoltzmannJointActionLearner:
         # Track opponents' joint actions
         self.opponent1_action_counts = np.zeros(self.opponent1_action_size)
         self.opponent2_action_counts = np.zeros(self.opponent2_action_size)
+
         self.opponent_joint_action_distribution = np.ones((self.opponent1_action_size, self.opponent2_action_size)) / (
-                    self.opponent1_action_size * self.opponent2_action_size)
+                self.opponent1_action_size * self.opponent2_action_size)
+        self.opponent_joint_action_counts = np.zeros((self.opponent1_action_size, self.opponent2_action_size))
+        self.total_observations = 0
 
         # Learning rate setup
         if learning_rate == 0.0:
@@ -200,20 +203,48 @@ class BoltzmannJointActionLearner:
         self.opponent1_action_history = []
         self.opponent2_action_history = []
 
-    def select_action(self, state):
+    def select_action2(self, state):
         # Calculate values as usual
         values = np.sum(self.qtable[state] * self.opponent_joint_action_distribution, axis=(1, 2))
+        # print("qtable[state]", self.qtable[state])
+        # print("opponent_joint_action_distribution", self.opponent_joint_action_distribution)
+        # print("sum", np.sum(self.qtable[state] * self.opponent_joint_action_distribution, axis=(1, 2)))
+        print("values", values)
 
         # Stabilize the softmax using log-sum-exp trick
         max_value = np.max(values)
         exp_values = np.exp((values - max_value) / self.temperature)
         probabilities = exp_values / np.sum(exp_values)
+        # print("probabilities", probabilities)
 
         # Choose an action based on the probabilities
         action = np.random.choice(self.action_size, p=probabilities)
+        # print("action", action)
         return action
 
-    def update_opponent_distribution(self, opponent1_action, opponent2_action):
+    def select_action(self, state):
+        if np.random.rand() < self.epsilon:
+            action = random.randrange(self.action_size)
+        else:
+            expected_q_values = np.sum(
+                self.qtable[state] * self.opponent_joint_action_distribution, axis=(1, 2)
+            )
+
+            # Step 2: Apply Boltzmann (softmax) to the marginalized Q-values for your agent's actions
+            max_q_value = np.max(expected_q_values)  # For numerical stability
+            exp_q_values = np.exp((expected_q_values - max_q_value) / self.temperature)
+            #print("exp_q_values", exp_q_values)
+
+            # Step 3: Compute action probabilities using softmax
+            action_probabilities = exp_q_values / np.sum(exp_q_values)
+            print("action_probabilities", action_probabilities)
+
+            # Step 4: Sample an action based on the Boltzmann distribution
+            action = np.random.choice(self.action_size, p=action_probabilities)
+
+        return action
+
+    def update_opponent_distribution2(self, opponent1_action, opponent2_action):
         # Track joint opponent actions
         self.opponent1_action_history.append(opponent1_action)
         self.opponent2_action_history.append(opponent2_action)
@@ -222,8 +253,21 @@ class BoltzmannJointActionLearner:
         self.opponent2_action_counts[opponent2_action] += 1
 
         # Update the joint action distribution
+        print("opponent1_action_counts", self.opponent1_action_counts)
+        print("opponent2_action_counts", self.opponent2_action_counts)
         joint_action_counts = np.outer(self.opponent1_action_counts, self.opponent2_action_counts)
+        print("joint_action_counts", joint_action_counts)
         self.opponent_joint_action_distribution = joint_action_counts / np.sum(joint_action_counts)
+        print("opponent_joint_action_distribution", self.opponent_joint_action_distribution)
+
+    def update_opponent_distribution(self, opponent1_action, opponent2_action):
+        # Increment the count for the observed joint action
+        self.opponent_joint_action_counts[opponent1_action, opponent2_action] += 1
+        self.total_observations += 1
+
+        # Normalize counts to compute the new distribution
+        self.opponent_joint_action_distribution = self.opponent_joint_action_counts / self.total_observations
+        print("opponent_joint_action_distribution", self.opponent_joint_action_distribution)
 
     def update(self, state, action, opponent1_action, opponent2_action, new_state, reward, done, update_epsilon=True):
         if not self.dynamic_lr:
@@ -232,11 +276,32 @@ class BoltzmannJointActionLearner:
             # Dynamic learning rate for joint actions
             self.action_counter[state, action, opponent1_action, opponent2_action] += 1
             lr = 1 / self.action_counter[state, action, opponent1_action, opponent2_action]
-        #print("lr", lr)
 
+            print("lr", lr)
+
+
+
+        # print everything to debug
+
+        """
+        print("state, action, opponent1_action, opponent2_action", state, action, opponent1_action, opponent2_action)
+        print("reward", reward)
+        print("self.qtable[state, action, opponent1_action, opponent2_action]", self.qtable[state, action, opponent1_action, opponent2_action])
+        print("lr", lr)
+        print("reward - self.qtable[state, action, opponent1_action, opponent2_action]", reward - self.qtable[state, action, opponent1_action, opponent2_action])
+        print("lr * (reward - self.qtable[state, action, opponent1_action, opponent2_action])",
+              lr * (
+                      reward - self.qtable[state, action, opponent1_action, opponent2_action])
+              )
+        print("self.qtable[state]", self.qtable[state])
+        print("*" * 50)"""
         # Update Q-value for joint actions
         self.qtable[state, action, opponent1_action, opponent2_action] += lr * (
-                    reward - self.qtable[state, action, opponent1_action, opponent2_action])
+                reward - self.qtable[state, action, opponent1_action, opponent2_action])
+        #print everything after updating
+        #print("self.qtable[state] AFTER", self.qtable)
+        #print("*" * 50)
+
 
         #self.qtable[state, action, opponent_action] += lr * (reward - self.qtable[state, action, opponent_action])
         #print("Q-table: ", self.qtable)
@@ -279,5 +344,10 @@ class BoltzmannJointActionLearner:
         self.epsilon = max(self.epsilon_min, self.epsilon)
 
     def print_rewards(self, episode, print_epsilon=True, print_q_table=True):
-        super().print_rewards(episode, print_epsilon, print_q_table)
+        # print("Episode ", episode + 1)
+        print("Total (discounted) reward of this episode: ", self.episode_total_rewards[episode])
+        print("Average total reward over all episodes until now: ", self.average_episode_total_rewards[-1])
+
+        print("Epsilon:", self.epsilon) if print_epsilon else None
+        print("Q-table: ", self.qtable) if print_q_table else None
         print("Temperature:", self.temperature)

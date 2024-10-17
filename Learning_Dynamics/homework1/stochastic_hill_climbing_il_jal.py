@@ -437,18 +437,18 @@ and you often have to maintain beliefs about the other agents’ strategies.
 from JointActionLearner import BoltzmannJointActionLearner
 
 # Number of trial runs
-num_trials = 2
-num_episodes = 10
+num_trials = 10
+num_episodes = 1000
 # Store the probability of optimal joint action for each episode, averaged across trials
 optimal_action_probs_boltzmann = np.zeros(num_episodes)
 
-optimal_joint_actions = [(0,0,0), (1,0,0), (2, 0, 0)] # I think!
+optimal_joint_actions = [(2, 0, 0)] # I think!
 
 # Run trial runs for Boltzmann Joint Action Learner
 for trial in range(num_trials):
 
     # Initialize environment and agents for Joint Action Learners (JALs)
-    standard_deviations = StandardDeviation(sigma0=2, sigma1=2, sigma=2)
+    standard_deviations = StandardDeviation(sigma0=0, sigma1=0, sigma=0)
 
     env = StochasticGame(reward_matrix=STOCHASTIC_GAME_REWARDS, standard_deviations=standard_deviations)
 
@@ -462,8 +462,8 @@ for trial in range(num_trials):
         epsilon_min=0.01,
         epsilon_decay=0.99,
         temperature=1.0,
-        temperature_min=0.01,
-        temperature_decay=0.95
+        temperature_min=0.1,
+        temperature_decay=0.99
     )
 
     agent_1_boltzmann = BoltzmannJointActionLearner(
@@ -476,8 +476,8 @@ for trial in range(num_trials):
         epsilon_min=0.01,
         epsilon_decay=0.99,
         temperature=1.0,
-        temperature_min=0.01,
-        temperature_decay=0.95
+        temperature_min=0.1,
+        temperature_decay=0.99
     )
 
     agent_2_boltzmann = BoltzmannJointActionLearner(
@@ -490,8 +490,8 @@ for trial in range(num_trials):
         epsilon_min=0.01,
         epsilon_decay=0.99,
         temperature=1.0,
-        temperature_min=0.01,
-        temperature_decay=0.95
+        temperature_min=0.1,
+        temperature_decay=0.99
     )
 
     # Keep track of the number of optimal actions for each episode
@@ -517,7 +517,6 @@ for trial in range(num_trials):
         # Check if the agents selected the optimal joint action
         #print("actions", action_0_boltzmann, action_1_boltzmann, action_2_boltzmann)
         if (action_0_boltzmann, action_1_boltzmann, action_2_boltzmann) in optimal_joint_actions:
-            print("yes")
             optimal_actions_boltzmann[episode] += 1
 
         # Update the Q-tables
@@ -541,9 +540,16 @@ for trial in range(num_trials):
         agent_1_boltzmann.update_temperature()
         agent_2_boltzmann.update_temperature()
 
+        agent_1_boltzmann.print_rewards(episode)
+
     # Calculate the probability of optimal joint action over episodes for this trial
     optimal_action_probs_boltzmann += optimal_actions_boltzmann / num_trials  # Averaging across trials
-    print("optimal_actions_boltzmann/num_trials", optimal_actions_boltzmann / num_trials )
+    #print("optimal_actions_boltzmann/num_trials", optimal_actions_boltzmann / num_trials )
+
+    #print q values
+    #print("agent_0_boltzmann.qtable", agent_0_boltzmann.qtable)
+    #print("agent_1_boltzmann.qtable", agent_1_boltzmann.qtable)
+    #print("agent_2_boltzmann.qtable", agent_2_boltzmann.qtable)
 
 # Plot the results with JAL for 3 agents
 plt.plot(optimal_action_probs_boltzmann, label='Boltzmann Joint Action Learners')
