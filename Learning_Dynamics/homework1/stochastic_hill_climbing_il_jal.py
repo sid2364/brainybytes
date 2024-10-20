@@ -404,7 +404,7 @@ Build a matrix for the stochastic game with a 3x3x3 game matrix
 
 from StochasticGame import StochasticGame, StandardDeviation
 
-STOCHASTIC_GAME_REWARDS = np.array([
+STOCHASTIC_GAME_REWARDS_NEW = np.array([
     # Player 1: a1
     [[11, 30, 0],  # Player 2: b1, for Player 3: c1, c2, c3
      [30, 7, 6],  # Player 2: b2, for Player 3: c1, c2, c3
@@ -421,7 +421,7 @@ STOCHASTIC_GAME_REWARDS = np.array([
      [0, 0, 3]]  # Player 2: b3, for Player 3: c1, c2, c3
 ])
 
-STOCHASTIC_GAME_REWARDS_OLD = np.array([
+STOCHASTIC_GAME_REWARDS = np.array([
     # Player 1: a1
     [[11, -30, 0],     # Player 2: b1, for Player 3: c1, c2, c3
      [-30, 7, 6],      # Player 2: b2, for Player 3: c1, c2, c3

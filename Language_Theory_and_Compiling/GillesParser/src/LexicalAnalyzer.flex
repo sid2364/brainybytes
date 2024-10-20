@@ -30,8 +30,12 @@ Identifier     = {Alpha}{AlphaNumeric}*
 Comment        = (\/\/.*\n)|(\!\!.*\!\!)
 //Long comment would be !! comment !!
 LongComment   = \!\!.*\!\!
+Whitespace = [ \t\n\r\f]
+
+%xstate YYINITIAL, COMMENT, VARNAME, NUMBER, STRING
 
 %%// Identification of tokens
+
 
 // Program structure
 "LET"           {System.out.println(new Symbol(LexicalUnit.LET, yyline, yycolumn, yytext()).toString());}
@@ -70,4 +74,5 @@ LongComment   = \!\!.*\!\!
 
 {Comment}       {}
 {LongComment}  {}
+{Whitespace}    {}
 .               {}
