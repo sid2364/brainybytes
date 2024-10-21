@@ -406,8 +406,8 @@ from StochasticGame import StochasticGame, StandardDeviation
 
 STOCHASTIC_GAME_REWARDS_NEW = np.array([
     # Player 1: a1
-    [[11, 30, 0],  # Player 2: b1, for Player 3: c1, c2, c3
-     [30, 7, 6],  # Player 2: b2, for Player 3: c1, c2, c3
+    [[11, 0, 0],  # Player 2: b1, for Player 3: c1, c2, c3
+     [0, 7, 6],  # Player 2: b2, for Player 3: c1, c2, c3
      [0, 0, 5]],  # Player 2: b3, for Player 3: c1, c2, c3
 
     # Player 1: a2
@@ -416,8 +416,8 @@ STOCHASTIC_GAME_REWARDS_NEW = np.array([
      [0, 0, 5]],  # Player 2: b3, for Player 3: c1, c2, c3
 
     # Player 1: a3
-    [[14, -50, 0],  # Player 2: b1, for Player 3: c1, c2, c3
-     [-50, 4, 3],  # Player 2: b2, for Player 3: c1, c2, c3
+    [[14, -5, 0],  # Player 2: b1, for Player 3: c1, c2, c3
+     [-5, 4, 3],  # Player 2: b2, for Player 3: c1, c2, c3
      [0, 0, 3]]  # Player 2: b3, for Player 3: c1, c2, c3
 ])
 
@@ -450,7 +450,7 @@ Section 5 of Claus & Boutilier’s paper, i.e., Optimistic Boltzmann, Weighted O
 the combination of both.  Recall that in Joint-Action learning, you learn about the quality of joint actions(27 in total in this setting), 
 and you often have to maintain beliefs about the other agents’ strategies.    
 """
-
+"""
 from JointActionLearner import BoltzmannJointActionLearner
 
 # Number of trial runs
@@ -600,6 +600,127 @@ action_counts = Counter(rewards_so_far)
 # Extract action tuples and their frequencies
 actions = list(action_counts.keys())
 frequencies = list(action_counts.values())
+
+# Create a bar chart
+plt.figure(figsize=(10, 6))
+
+# Convert tuple actions to string for labeling
+action_labels = [str(action) for action in actions]
+
+plt.bar(action_labels, frequencies)
+
+# Add labels and title
+plt.xlabel('Actions (Agent 0, Agent 1, Agent 2)')
+plt.ylabel('Frequency')
+plt.title('Frequency of Joint Actions Taken by 3 Agents')
+
+# Rotate x-axis labels for better readability
+plt.xticks(rotation=45, ha='right')
+
+# Show the plot
+plt.tight_layout()
+plt.show()
+"""
+
+from Qlearner import QLearner3x3x3
+# Number of trial runs
+num_trials = 50
+num_episodes = 3000
+# Store the probability of optimal joint action for each episode, averaged across trials
+optimal_action_probs_independent = np.zeros(num_episodes)
+
+optimal_joint_actions = [(2, 0, 0), (1, 0, 0), (0, 0, 0), (1, 1, 2)]  # Define the optimal joint actions
+
+rewards_so_far = []
+
+# Run trial runs for Independent Learners
+for trial in range(num_trials):
+
+    # Initialize environment and agents for Independent Learners (ILs)
+    standard_deviations = StandardDeviation(sigma0=0, sigma1=0, sigma=0)
+
+    env = StochasticGame(reward_matrix=STOCHASTIC_GAME_REWARDS, standard_deviations=standard_deviations)
+
+    agent_0_independent = QLearner3x3x3(
+        action_size=3,
+        state_size=1
+    )
+
+    agent_1_independent = QLearner3x3x3(
+        action_size=3,
+        state_size=1
+    )
+
+    agent_2_independent = QLearner3x3x3(
+        action_size=3,
+        state_size=1
+    )
+
+    # Keep track of the number of optimal actions for each episode
+    optimal_actions_independent = np.zeros(num_episodes)
+    state = 0  # Single state again
+
+    for episode in range(num_episodes):
+        observations = env.reset()
+        done = False
+
+        while not done:
+            # Agents independently take actions
+            action_0_independent = agent_0_independent.select_action(state)
+            action_1_independent = agent_1_independent.select_action(state)
+            action_2_independent = agent_2_independent.select_action(state)
+
+            actions = {"player_0": action_0_independent, "player_1": action_1_independent, "player_2": action_2_independent}
+
+            # Step in the environment
+            observations, rewards, dones, _, infos = env.step(actions)
+
+            # Update the Q-tables independently
+            agent_0_independent.update(state, action_0_independent, state, rewards["player_0"], dones["player_0"], True)
+            agent_1_independent.update(state, action_1_independent, state, rewards["player_1"], dones["player_1"], True)
+            agent_2_independent.update(state, action_2_independent, state, rewards["player_2"], dones["player_2"], True)
+
+            #print("rewards", rewards["player_0"], rewards["player_1"], rewards["player_2"])
+
+            # Check if the agents selected the optimal joint action
+            if (action_0_independent, action_1_independent, action_2_independent) in optimal_joint_actions:
+                optimal_actions_independent[episode] += 1
+
+            # Move to the next state if applicable
+            # state = observations  # Update if your environment provides the next state
+
+            # Check if the episode is done
+            done = dones["player_0"] and dones["player_1"] and dones["player_2"]
+
+            # Keep track of actions chosen by the agents and plot them
+            rewards_this_cycle = (action_0_independent, action_1_independent, action_2_independent)
+            rewards_so_far.append(rewards_this_cycle)
+
+    # Calculate the probability of optimal joint action over episodes for this trial
+    optimal_action_probs_independent += optimal_actions_independent / num_trials  # Averaging across trials
+
+
+# Plot the results for Independent Learners
+plt.plot(optimal_action_probs_independent, label='Independent Learners')
+plt.xlabel('Number of Interactions')
+plt.ylabel('Probability of Choosing an Optimal Joint Action')
+plt.title('Choosing Optimal Joint Actions')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
+from collections import Counter
+
+action_counts = Counter(rewards_so_far)
+#
+# # Extract action tuples and their frequencies
+# actions = list(action_counts.keys())
+# frequencies = list(action_counts.values())
+
+# sort the actions by the first agent's action
+actions = sorted(action_counts.keys(), key=lambda x: x[0])
+frequencies = [action_counts[action] for action in actions]
 
 # Create a bar chart
 plt.figure(figsize=(10, 6))
