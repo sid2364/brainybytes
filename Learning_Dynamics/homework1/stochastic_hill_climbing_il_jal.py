@@ -455,11 +455,12 @@ from JointActionLearner import BoltzmannJointActionLearner
 
 # Number of trial runs
 num_trials = 100
-num_episodes = 1000
+num_episodes = 2000
 # Store the probability of optimal joint action for each episode, averaged across trials
 optimal_action_probs_boltzmann = np.zeros(num_episodes)
 
-optimal_joint_actions = [(2, 1, 0), (2, 0, 1)] # I think!
+#optimal_joint_actions = [(2, 1, 0), (2, 0, 1)] # I think!
+optimal_joint_actions = [(2, 0, 0), (1, 0, 0), (1, 1, 0), (1, 1, 1), (0, 1, 1)]
 
 rewards_so_far = []
 
@@ -467,7 +468,7 @@ rewards_so_far = []
 for trial in range(num_trials):
 
     # Initialize environment and agents for Joint Action Learners (JALs)
-    standard_deviations = StandardDeviation(sigma0=0, sigma1=0, sigma=0)
+    standard_deviations = StandardDeviation(sigma0=2, sigma1=2, sigma=2)
 
     env = StochasticGame(reward_matrix=STOCHASTIC_GAME_REWARDS, standard_deviations=standard_deviations)
 
@@ -479,7 +480,7 @@ for trial in range(num_trials):
         gamma=0.95,
         epsilon=1.0,
         epsilon_min=0.01,
-        epsilon_decay=0.99,
+        epsilon_decay=0.995,
         temperature=1.0,
         temperature_min=0.1,
         temperature_decay=0.995,
@@ -494,7 +495,7 @@ for trial in range(num_trials):
         gamma=0.95,
         epsilon=1.0,
         epsilon_min=0.01,
-        epsilon_decay=0.99,
+        epsilon_decay=0.995,
         temperature=1.0,
         temperature_min=0.1,
         temperature_decay=0.995,
@@ -542,6 +543,8 @@ for trial in range(num_trials):
                                      rewards["player_1"], dones["player_1"], update_epsilon=True)
             agent_2_boltzmann.update(state, action_2_boltzmann, action_0_boltzmann, action_1_boltzmann, state,
                                      rewards["player_2"], dones["player_2"], update_epsilon=True)
+
+            #print("rewards", rewards["player_0"], rewards["player_1"], rewards["player_2"])
 
             # Update opponent distributions
             agent_0_boltzmann.update_opponent_distribution(action_1_boltzmann, action_2_boltzmann)
